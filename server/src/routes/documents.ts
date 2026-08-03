@@ -18,12 +18,12 @@ const upload = multer({
 export const documentsRouter = Router();
 
 documentsRouter.post("/", upload.single("file"), async (req, res) => {
-  if (!req.file) throw new ValidationError("No file uploaded");
+  try {
+     if (!req.file) throw new ValidationError("No file uploaded");
 
   const body = uploadBodySchema.parse(req.body);
   const extracted = await extractDocument(req.file.buffer);
-
-  const doc = documentStore.create({
+  const updatedExtractedData = {
     kind: body.kind,
     title: body.title ?? req.file.originalname,
     filename: req.file.originalname,
@@ -32,9 +32,14 @@ documentsRouter.post("/", upload.single("file"), async (req, res) => {
     wordCount: extracted.wordCount,
     ...(extracted.pageCount !== undefined ? { pageCount: extracted.pageCount } : {}),
     ...(extracted.warning !== undefined ? { warning: extracted.warning } : {}),
-  });
+  }
+  const doc = documentStore.create(updatedExtractedData);
 
   res.status(201).json({ document: doc });
+  } catch (error) {
+    console.error(error)
+  }
+ 
 });
 
 documentsRouter.get("/", (_req, res) => {

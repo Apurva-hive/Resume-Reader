@@ -48,7 +48,7 @@ export async function extractPdf(buffer: Buffer): Promise<PdfResult> {
 
   const joined = pages.join("\n\n");
 
-  if (joined.replace(/\s/g, "").length < 20) {
+  if (joined && joined.replace(/\s/g, "").length < 20) {
     const { text } = await extractText(data, { mergePages: true });
     return { text, pageCount, usedLayoutPass: false };
   }
