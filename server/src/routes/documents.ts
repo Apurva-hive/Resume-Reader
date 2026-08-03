@@ -1,19 +1,53 @@
 import { Router } from "express";
-import { NotFoundError } from "../lib/errors.js";
+import multer from "multer";
+import { NotFoundError, ValidationError } from "../lib/errors.js";
+import { extractDocument } from "../services/extraction/index.js";
+import {
+  documentStore,
+  toSummary,
+  uploadBodySchema,
+} from "../schemas/document.js";
 
-/**
- * M1 lands here: POST /documents (upload + extract), GET /documents,
- * GET /documents/:id, DELETE /documents/:id.
- *
- * Route handlers stay thin — validate input, call one service, shape the
- * response. Extraction logic belongs in services/extraction/.
- */
-export const documentsRouter = Router();
+const MAX_BYTES = 5 * 1024 * 1024;
 
-documentsRouter.get("/", async (_req, res) => {
-  res.json({ documents: [] });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES, files: 1 },
 });
 
-documentsRouter.get("/:id", async (req, _res) => {
-  throw new NotFoundError(`Document ${req.params.id}`);
+export const documentsRouter = Router();
+
+documentsRouter.post("/", upload.single("file"), async (req, res) => {
+  if (!req.file) throw new ValidationError("No file uploaded");
+
+  const body = uploadBodySchema.parse(req.body);
+  const extracted = await extractDocument(req.file.buffer);
+
+  const doc = documentStore.create({
+    kind: body.kind,
+    title: body.title ?? req.file.originalname,
+    filename: req.file.originalname,
+    format: extracted.format,
+    text: extracted.text,
+    wordCount: extracted.wordCount,
+    ...(extracted.pageCount !== undefined ? { pageCount: extracted.pageCount } : {}),
+    ...(extracted.warning !== undefined ? { warning: extracted.warning } : {}),
+  });
+
+  res.status(201).json({ document: doc });
+});
+
+documentsRouter.get("/", (_req, res) => {
+  res.json({ documents: documentStore.list().map(toSummary) });
+});
+
+documentsRouter.get("/:id", (req, res) => {
+  const doc = documentStore.get(req.params.id);
+  if (!doc) throw new NotFoundError("Document");
+  res.json({ document: doc });
+});
+
+documentsRouter.delete("/:id", (req, res) => {
+  if (!documentStore.delete(req.params.id)) throw new NotFoundError("Document");
+  res.status(204).end();
 });

@@ -45,11 +45,3 @@ src/
 ├── middleware/
 └── lib/
 ```
-
-Four rules that keep this from rotting:
-
-1. `app.ts` never calls `listen` — integration tests need the app object.
-2. Route handlers hold no logic. Over ~20 lines means something leaked in.
-3. One file owns the LLM connection: retries, timeouts, usage logging.
-4. `env.ts` validates at boot. A missing API key crashes on startup with a
-   clear message, not twenty minutes later mid-request.

@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
+import { MulterError } from "multer";
 
 export function notFoundHandler(req: Request, res: Response) {
   res.status(404).json({
@@ -30,6 +31,15 @@ export function errorHandler(
     });
     return;
   }
+  
+  if (err instanceof MulterError) {
+  const message =
+    err.code === "LIMIT_FILE_SIZE"
+      ? "File is too large. Maximum size is 5 MB."
+      : `Upload failed: ${err.message}`;
+  res.status(413).json({ error: { code: err.code, message } });
+  return;
+}
 
   if (err instanceof AppError) {
     res.status(err.status).json({
