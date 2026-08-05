@@ -38,6 +38,7 @@ documentsRouter.post("/", upload.single("file"), async (req, res) => {
   res.status(201).json({ document: doc });
   } catch (error) {
     console.error(error)
+    throw error;
   }
  
 });

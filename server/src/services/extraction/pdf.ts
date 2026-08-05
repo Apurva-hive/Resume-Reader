@@ -47,7 +47,7 @@ export async function extractPdf(buffer: Buffer): Promise<PdfResult> {
   }
 
   const joined = pages.join("\n\n");
-
+  if (joined === "") throw new AppError("Extracted data has no text", 422, "NO_TEXT");
   if (joined && joined.replace(/\s/g, "").length < 20) {
     const { text } = await extractText(data, { mergePages: true });
     return { text, pageCount, usedLayoutPass: false };
