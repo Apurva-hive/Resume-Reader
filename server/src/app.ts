@@ -6,6 +6,8 @@ import { logger } from "./lib/logger.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { healthRouter } from "./routes/health.js";
 import { documentsRouter } from "./routes/documents.js";
+import { analysisRouter } from "./routes/analysis.js";
+
 
 /**
  * Builds the configured app but never calls listen(). index.ts owns the
@@ -24,6 +26,7 @@ export function createApp() {
 
   app.use("/health", healthRouter);
   app.use("/documents", documentsRouter);
+  app.use("/analysis", analysisRouter)
 
 
   app.use(notFoundHandler);

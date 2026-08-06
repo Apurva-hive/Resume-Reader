@@ -10,7 +10,8 @@ const envSchema = z.object({
 
   // Added in M2 — kept optional so the server still boots without it.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
-
+  LLM_MODEL: z.string().default("claude-sonnet-5"),
+  LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   // Added in M1/M5.
   DATABASE_URL: z.string().url().optional(),
 });
