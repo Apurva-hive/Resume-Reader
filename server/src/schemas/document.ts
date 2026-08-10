@@ -1,5 +1,7 @@
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
+import { db } from "../db/index.js";
+import { documents, type DocumentRow, type NewDocumentRow } from "../db/schema.js";
 
 export const documentKind = z.enum(["resume", "job_description"]);
 export type DocumentKind = z.infer<typeof documentKind>;
@@ -9,44 +11,28 @@ export const uploadBodySchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
 });
 
-export type StoredDocument = {
-  id: string;
-  kind: DocumentKind;
-  title: string;
-  filename: string;
-  format: "pdf" | "docx" | "txt";
-  text: string;
-  wordCount: number;
-  pageCount?: number;
-  warning?: string;
-  createdAt: string;
-};
-
-const documents = new Map<string, StoredDocument>();
+export type StoredDocument = DocumentRow;
 
 export const documentStore = {
-  create(doc: Omit<StoredDocument, "id" | "createdAt">): StoredDocument {
-    const stored: StoredDocument = {
-      ...doc,
-      id: randomUUID(),
-      createdAt: new Date().toISOString(),
-    };
-    documents.set(stored.id, stored);
-    return stored;
+  async create(doc: NewDocumentRow): Promise<StoredDocument> {
+    const [row] = await db.insert(documents).values(doc).returning();
+    if (!row) throw new Error("Insert returned no row");
+    return row;
   },
 
-  get(id: string): StoredDocument | undefined {
-    return documents.get(id);
+  async get(id: string): Promise<StoredDocument | undefined> {
+    const [row] = await db.select().from(documents).where(eq(documents.id, id)).limit(1);
+    return row;
   },
 
-  list(): StoredDocument[] {
-    return [...documents.values()].sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt)
-    );
+  async list(): Promise<StoredDocument[]> {
+    return db.select().from(documents).orderBy(desc(documents.createdAt));
   },
 
-  delete(id: string): boolean {
-    return documents.delete(id);
+  async delete(id: string): Promise<boolean> {
+    const rows = await db.delete(documents).where(eq(documents.id, id))
+      .returning({ id: documents.id });
+    return rows.length > 0;
   },
 };
 

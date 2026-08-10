@@ -13,7 +13,7 @@ const envSchema = z.object({
   LLM_MODEL: z.string().default("claude-sonnet-5"),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   // Added in M1/M5.
-  DATABASE_URL: z.string().url().optional(),
+  DATABASE_URL: z.string().url(),
 });
 
 const parsed = envSchema.safeParse(process.env);

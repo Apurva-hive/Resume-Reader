@@ -1,3 +1,4 @@
+import { env } from "../env.js";
 import { AppError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import { atsScoreSystem, atsScoreUser } from "../prompts/atsScore.js";
@@ -20,10 +21,35 @@ function extractJson(raw: string): unknown {
   }
 }
 
+export type ScoreUsage = {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+};
+
+export type ScoreOutcome = {
+  score: AtsScore;
+  usage: ScoreUsage;
+};
+
+function usageOf(result: {
+  inputTokens: number;
+  outputTokens: number;
+  latencyMs: number;
+}): ScoreUsage {
+  return {
+    model: env.LLM_MODEL,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
+    latencyMs: result.latencyMs,
+  };
+}
+
 export async function scoreResume(
   resumeText: string,
   jobDescriptionText: string
-): Promise<AtsScore> {
+): Promise<ScoreOutcome> {
   const result = await complete({
     task: "ats_score",
     system: atsScoreSystem,
@@ -33,7 +59,9 @@ export async function scoreResume(
 
   const parsed = atsScoreSchema.safeParse(extractJson(result.text));
 
-  if (parsed.success) return parsed.data;
+  if (parsed.success) {
+    return { score: parsed.data, usage: usageOf(result) };
+  }
 
   logger.warn(
     { errors: parsed.error.flatten() },
@@ -60,9 +88,20 @@ Return the corrected JSON object only.`,
   const repaired = atsScoreSchema.safeParse(extractJson(repair.text));
 
   if (!repaired.success) {
-    logger.error({ errors: repaired.error.flatten() }, "llm output failed validation after repair");
+    logger.error(
+      { errors: repaired.error.flatten() },
+      "llm output failed validation after repair"
+    );
     throw new AppError("The AI could not produce a valid analysis. Try again.", 502, "LLM_INVALID_OUTPUT");
   }
 
-  return repaired.data;
+  return {
+    score: repaired.data,
+    usage: {
+      model: env.LLM_MODEL,
+      inputTokens: result.inputTokens + repair.inputTokens,
+      outputTokens: result.outputTokens + repair.outputTokens,
+      latencyMs: result.latencyMs + repair.latencyMs,
+    },
+  };
 }

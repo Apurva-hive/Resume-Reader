@@ -1,4 +1,5 @@
 import { createApp } from "./app.js";
+import { closeDb } from "./db/index.js";
 import { env } from "./env.js";
 import { logger } from "./lib/logger.js";
 
@@ -18,7 +19,10 @@ server.on("error", (err) => {
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     logger.info(`${signal} received, shutting down`);
-    server.close(() => process.exit(0));
+    server.close(async() => {
+        await closeDb();
+        process.exit(0)
+    });
     setTimeout(() => process.exit(1), 10_000).unref();
   });
 }

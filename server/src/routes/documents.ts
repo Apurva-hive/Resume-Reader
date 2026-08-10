@@ -33,7 +33,7 @@ documentsRouter.post("/", upload.single("file"), async (req, res) => {
     ...(extracted.pageCount !== undefined ? { pageCount: extracted.pageCount } : {}),
     ...(extracted.warning !== undefined ? { warning: extracted.warning } : {}),
   }
-  const doc = documentStore.create(updatedExtractedData);
+  const doc = await documentStore.create(updatedExtractedData);
 
   res.status(201).json({ document: doc });
   } catch (error) {
@@ -43,17 +43,18 @@ documentsRouter.post("/", upload.single("file"), async (req, res) => {
  
 });
 
-documentsRouter.get("/", (_req, res) => {
-  res.json({ documents: documentStore.list().map(toSummary) });
+documentsRouter.get("/", async (_req, res) => {
+  const docs = await documentStore.list();
+  res.json({ documents: docs.map(toSummary) });
 });
 
-documentsRouter.get("/:id", (req, res) => {
-  const doc = documentStore.get(req.params.id);
+documentsRouter.get("/:id", async (req, res) => {
+  const doc = await documentStore.get(req.params.id);
   if (!doc) throw new NotFoundError("Document");
   res.json({ document: doc });
 });
 
-documentsRouter.delete("/:id", (req, res) => {
-  if (!documentStore.delete(req.params.id)) throw new NotFoundError("Document");
+documentsRouter.delete("/:id", async (req, res) => {
+  if (!(await documentStore.delete(req.params.id))) throw new NotFoundError("Document");
   res.status(204).end();
 });
