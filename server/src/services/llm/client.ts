@@ -3,7 +3,7 @@ import { env } from "../../env.js";
 import { AppError } from "../../lib/errors.js";
 import { logger } from "../../lib/logger.js";
 
-const client = new Anthropic({
+export const client = new Anthropic({
   apiKey: env.ANTHROPIC_API_KEY,
   maxRetries: 0, // we retry ourselves so we can log each attempt
 });
